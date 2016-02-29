@@ -5,6 +5,10 @@
 
 var Scr9ller = (function() {
   'use strict';
+
+  var HEIGHT = window.innerHeight;
+  var WIDTH = window.innerWidth;
+
   //============================================================================
   // Helper Method
   //============================================================================
@@ -318,15 +322,24 @@ var Scr9ller = (function() {
 
         if(this.scroll){
           var inner = this.event.target.children[0];
+
+          HEIGHT = window.innerHeight;
+          WIDTH = window.innerWidth;
+
+          this.scroll.bar.ratio = HEIGHT / inner.clientHeight;
+          this.scroll.bar.dragger.style.height = this.scroll.bar.ratio * HEIGHT + 'px';
+
           this.scroll.containerHeight = target.clientHeight;
           this.scroll.innerHeight = inner.clientHeight;
+
+          this.scroll.maxY = ( this.scroll.innerHeight - this.scroll.containerHeight ) * -1;
         }
 
       };
       // Smooth Scroll Methods -------------------------------------------------
 
 
-      obj.initScroll = function(){
+      obj.initScroll = function(options){
         var _t = this;
         var target = _t.event.target;
         var inner = _t.event.target.children[0];
@@ -334,6 +347,7 @@ var Scr9ller = (function() {
         var ease = 0.15;
 
         _t.scroll = {};
+        _t.scroll.bar = {};
 
         _t.scroll.requestId = undefined;
         _t.scroll.containerHeight = target.clientHeight;
@@ -341,6 +355,8 @@ var Scr9ller = (function() {
         _t.scroll.targetY = 0;
         _t.scroll.relativeY = 0;
         _t.scroll.maxY = ( _t.scroll.innerHeight - _t.scroll.containerHeight ) * -1;
+        _t.scroll.bar.type = (options && typeof options.type === 'string' && options.type !== '') ? options.type : null;
+        _t.scroll.bar.position = (options && typeof options.position === 'string' && options.position !== '') ? options.position : null;
 
         _t.scroll.loop = function(){
 
@@ -354,6 +370,14 @@ var Scr9ller = (function() {
           s["webkitTransform"] = t;
           s["mozTransform"] = t;
           s["msTransform"] = t;
+
+          var tDragger = 'translateY(' + this.bar.ratio * -currentY + 'px) translateZ(0)';
+          var sDragger = this.bar.dragger.style;
+
+          sDragger["transform"] = tDragger;
+          sDragger["webkitTransform"] = tDragger;
+          sDragger["mozTransform"] = tDragger;
+          sDragger["msTransform"] = tDragger;
 
           this.requestId = window.requestAnimationFrame(this.loop.bind(this));
         };
@@ -376,18 +400,66 @@ var Scr9ller = (function() {
           var p = _t.scroll;
           p.targetY += event.deltaY;
 
-          p.targetY = Math.max(p.targetY, p.maxY);
+          p.targetY = Math.max(p.targetY, _t.scroll.maxY);
           p.targetY = Math.min(p.targetY,  0 );
 
         });
 
-        _t.scroll.start();
+        _t.scroll.addScrollBar = function(){
+
+          var contentHeight = this.innerHeight;
+          this.bar.ratio = HEIGHT / contentHeight;
+
+          var scrollBarContainer = document.createElement('div');
+          var scrollBarDragger = document.createElement('div');
+          var sC = scrollBarContainer.style;
+          var sD = scrollBarDragger.style;
+
+          scrollBarContainer.classList.add('custom--scroll--bar');
+          scrollBarDragger.classList.add('custom--scroll--dragger');
+
+          scrollBarContainer.appendChild(scrollBarDragger);
+          target.appendChild(scrollBarContainer);
+
+          sC['right'] = '0px';
+          sD['height'] = this.bar.ratio * HEIGHT + 'px';
+          sD['opacity'] = 0;
+
+          return scrollBarContainer;
+        };
+
+        _t.scroll.setScrollBar = function(){
+
+          this.bar.element = this.addScrollBar();
+          this.bar.dragger = this.bar.element.children[0];
+
+          var sD = this.bar.dragger.style;
+
+          _t.on(function(){
+            if(!_hasTouch){
+              sD['opacity'] = 1;
+              var interval = setTimeout(function(){
+                sD['opacity'] = 0;
+                clearTimeout(interval);
+              }, 2500);
+            }
+
+          });
+
+          _t.scroll.start();
+        };
+
+        _t.scroll.setScrollBar();
 
       };
 
       // Obj Initialization ----------------------------------------------------
       _bind.call(obj, el);
 
+      window.addEventListener('resize', function(){
+        obj.resize();
+      });
+      
       return obj;
     },
   };
